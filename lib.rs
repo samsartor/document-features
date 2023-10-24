@@ -251,7 +251,16 @@ pub fn document_features(tokens: TokenStream) -> TokenStream {
         .unwrap_or_else(std::convert::identity)
 }
 
+fn str_literal(str: &str) -> TokenStream {
+    std::iter::once(proc_macro::TokenTree::from(proc_macro::Literal::string(str))).collect()
+}
+
 fn document_features_impl(args: &Args) -> Result<TokenStream, TokenStream> {
+    match std::env::var("DOCUMENT_FEATURES").as_deref() {
+        Err(_) | Ok("1") => (),
+        Ok(_) => return Ok(str_literal("")),
+    }
+
     let path = std::env::var("CARGO_MANIFEST_DIR").unwrap();
     let mut cargo_toml = std::fs::read_to_string(Path::new(&path).join("Cargo.toml"))
         .map_err(|e| error(&format!("Can't open Cargo.toml: {:?}", e)))?;
@@ -267,7 +276,7 @@ fn document_features_impl(args: &Args) -> Result<TokenStream, TokenStream> {
     }
 
     let result = process_toml(&cargo_toml, args).map_err(|e| error(&e))?;
-    Ok(std::iter::once(proc_macro::TokenTree::from(proc_macro::Literal::string(&result))).collect())
+    Ok(str_literal(&result))
 }
 
 fn process_toml(cargo_toml: &str, args: &Args) -> Result<String, String> {
